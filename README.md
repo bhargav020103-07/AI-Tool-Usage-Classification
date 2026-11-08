@@ -92,12 +92,3 @@ The following metrics were calculated for all models:
 3. **Decision Tree:** Captured non-linear relationships effectively, producing competitive accuracy just below Logistic Regression.
 4. **KNN:** Benefited from data normalization, with results comparable to the Decision Tree.
 5. **Gaussian Naive Bayes:** The fastest and simplest model, though affected by feature independence assumptions.
-
----
-
-## 🚀 Local Setup & Installation
-
-### 1. Clone the Repository
-```bash
-git clone [https://github.com/bhargav020103-07/AI-Tool-Usage-Classification.git](https://github.com/bhargav020103-07/AI-Tool-Usage-Classification.git)
-cd AI-Tool-Usage-Classification
