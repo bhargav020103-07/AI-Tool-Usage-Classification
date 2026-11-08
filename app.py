@@ -23,286 +23,403 @@ from sklearn.metrics import (
     classification_report
 )
 
-# ==========================================
-# PAGE SETTINGS
-# ==========================================
+# =====================================================
+# PAGE CONFIG
+# =====================================================
 
 st.set_page_config(
-    page_title="Classification Model Comparison",
+    page_title="AI Tool Usage Classification",
+    page_icon="🤖",
     layout="wide"
 )
 
-st.title("🚀 Classification Model Comparison Tool")
+st.title("🤖 AI Tool Usage Classification")
+st.markdown(
+"""
+### Machine Learning Model Comparison
 
-st.write(
-    """
-    Upload a CSV dataset,
-    select the target column,
-    choose a machine learning model,
-    and evaluate performance.
-    """
+Default Dataset:
+**AI Tool Usage by Indian College Students 2025**
+"""
 )
 
-# ==========================================
-# FILE UPLOAD
-# ==========================================
+# =====================================================
+# SIDEBAR
+# =====================================================
 
-uploaded_file = st.file_uploader(
-    "Upload CSV File",
+st.sidebar.title("Dataset Options")
+
+uploaded_file = st.sidebar.file_uploader(
+    "Upload Your Own Dataset (Optional)",
     type=["csv"]
 )
+
+# =====================================================
+# DEFAULT OR CUSTOM DATASET
+# =====================================================
 
 if uploaded_file is not None:
 
     df = pd.read_csv(uploaded_file)
 
-    st.success("Dataset Loaded Successfully")
+    st.sidebar.success(
+        "Using Uploaded Dataset"
+    )
 
-    st.subheader("Dataset Preview")
+    custom_dataset = True
 
-    st.dataframe(df.head())
+else:
 
-    st.write("Rows:", df.shape[0])
-    st.write("Columns:", df.shape[1])
+    try:
+        df = pd.read_csv("Students.csv")
 
-    # ==========================================
-    # TARGET SELECTION
-    # ==========================================
+        st.sidebar.success(
+            "Using Default Dataset: Students.csv"
+        )
 
-    target_column = st.selectbox(
+        custom_dataset = False
+
+    except Exception as e:
+
+        st.error(f"Dataset Error: {e}")
+        st.stop()
+
+# =====================================================
+# DATA PREVIEW
+# =====================================================
+
+st.subheader("Dataset Preview")
+
+st.dataframe(df.head())
+
+col1, col2 = st.columns(2)
+
+col1.metric("Rows", df.shape[0])
+col2.metric("Columns", df.shape[1])
+
+# =====================================================
+# CLEAN DATA
+# =====================================================
+
+drop_cols = [
+    "Student_Name",
+    "College_Name"
+]
+
+for col in drop_cols:
+    if col in df.columns:
+        df.drop(col, axis=1, inplace=True)
+
+df.dropna(inplace=True)
+
+# =====================================================
+# TARGET COLUMN
+# =====================================================
+
+if custom_dataset:
+
+    target_col = st.sidebar.selectbox(
         "Select Target Column",
         df.columns
     )
 
-    # ==========================================
-    # HANDLE MISSING VALUES
-    # ==========================================
+else:
 
-    df = df.dropna()
+    target_col = "Willing_to_Pay_for_Access"
 
-    # ==========================================
-    # LABEL ENCODING
-    # ==========================================
-
-    for col in df.columns:
-        encoder = LabelEncoder()
-        df[col] = encoder.fit_transform(
-            df[col].astype(str)
-        )
-
-    # ==========================================
-    # FEATURES + TARGET
-    # ==========================================
-
-    X = df.drop(
-        target_column,
-        axis=1
+    st.info(
+        f"Target Column: {target_col}"
     )
 
-    y = df[target_column]
+# =====================================================
+# ENCODE DATA
+# =====================================================
 
-    # ==========================================
-    # TRAIN TEST SPLIT
-    # ==========================================
+for col in df.columns:
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        X,
-        y,
-        test_size=0.20,
+    encoder = LabelEncoder()
+
+    df[col] = encoder.fit_transform(
+        df[col].astype(str)
+    )
+
+# =====================================================
+# FEATURES/TARGET
+# =====================================================
+
+X = df.drop(
+    target_col,
+    axis=1
+)
+
+y = df[target_col]
+
+# =====================================================
+# SPLIT
+# =====================================================
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.20,
+    random_state=42,
+    stratify=y
+)
+
+# =====================================================
+# SCALE
+# =====================================================
+
+scaler = StandardScaler()
+
+X_train = scaler.fit_transform(
+    X_train
+)
+
+X_test = scaler.transform(
+    X_test
+)
+
+# =====================================================
+# MODEL SELECTION
+# =====================================================
+
+st.subheader("Choose Model")
+
+model_name = st.selectbox(
+    "Select Classification Model",
+    [
+        "Logistic Regression",
+        "Decision Tree",
+        "KNN",
+        "Naive Bayes",
+        "SVM"
+    ]
+)
+
+# =====================================================
+# MODEL CREATION
+# =====================================================
+
+if model_name == "Logistic Regression":
+
+    model = LogisticRegression(
+        max_iter=1000
+    )
+
+elif model_name == "Decision Tree":
+
+    model = DecisionTreeClassifier(
         random_state=42
     )
 
-    # ==========================================
-    # SCALING
-    # ==========================================
+elif model_name == "KNN":
 
-    scaler = StandardScaler()
-
-    X_train = scaler.fit_transform(X_train)
-    X_test = scaler.transform(X_test)
-
-    # ==========================================
-    # MODEL SELECTION
-    # ==========================================
-
-    model_name = st.selectbox(
-        "Choose Model",
-        [
-            "Logistic Regression",
-            "Decision Tree",
-            "KNN",
-            "Naive Bayes",
-            "SVM"
-        ]
+    model = KNeighborsClassifier(
+        n_neighbors=5
     )
 
-    # ==========================================
-    # CREATE MODEL
-    # ==========================================
+elif model_name == "Naive Bayes":
 
-    if model_name == "Logistic Regression":
+    model = GaussianNB()
 
-        model = LogisticRegression(max_iter=1000)
+else:
 
-    elif model_name == "Decision Tree":
-
-        model = DecisionTreeClassifier()
-
-    elif model_name == "KNN":
-
-        model = KNeighborsClassifier()
-
-    elif model_name == "Naive Bayes":
-
-        model = GaussianNB()
-
-    else:
-
-        model = SVC(
-            probability=True
-        )
-
-    # ==========================================
-    # TRAIN MODEL
-    # ==========================================
-
-    model.fit(
-        X_train,
-        y_train
+    model = SVC(
+        probability=True,
+        random_state=42
     )
 
-    y_pred = model.predict(
+# =====================================================
+# TRAIN MODEL
+# =====================================================
+
+model.fit(
+    X_train,
+    y_train
+)
+
+# =====================================================
+# PREDICTION
+# =====================================================
+
+y_pred = model.predict(
+    X_test
+)
+
+# =====================================================
+# METRICS
+# =====================================================
+
+accuracy = accuracy_score(
+    y_test,
+    y_pred
+)
+
+precision = precision_score(
+    y_test,
+    y_pred,
+    average="weighted"
+)
+
+recall = recall_score(
+    y_test,
+    y_pred,
+    average="weighted"
+)
+
+f1 = f1_score(
+    y_test,
+    y_pred,
+    average="weighted"
+)
+
+mcc = matthews_corrcoef(
+    y_test,
+    y_pred
+)
+
+# =====================================================
+# AUC
+# =====================================================
+
+try:
+
+    y_prob = model.predict_proba(
         X_test
     )
 
-    try:
-        y_prob = model.predict_proba(
-            X_test
-        )[:, 1]
+    if len(y.unique()) == 2:
 
         auc = roc_auc_score(
             y_test,
-            y_prob
+            y_prob[:, 1]
         )
 
-    except:
-        auc = "Not Available"
+    else:
 
-    # ==========================================
-    # METRICS
-    # ==========================================
+        auc = roc_auc_score(
+            y_test,
+            y_prob,
+            multi_class="ovr"
+        )
 
-    accuracy = accuracy_score(
-        y_test,
-        y_pred
-    )
+except:
 
-    precision = precision_score(
-        y_test,
-        y_pred,
-        average="weighted"
-    )
+    auc = None
 
-    recall = recall_score(
-        y_test,
-        y_pred,
-        average="weighted"
-    )
+# =====================================================
+# SHOW METRICS
+# =====================================================
 
-    f1 = f1_score(
-        y_test,
-        y_pred,
-        average="weighted"
-    )
+st.subheader("Evaluation Metrics")
 
-    mcc = matthews_corrcoef(
-        y_test,
-        y_pred
-    )
+c1, c2, c3 = st.columns(3)
 
-    # ==========================================
-    # DISPLAY METRICS
-    # ==========================================
+c1.metric(
+    "Accuracy",
+    f"{accuracy:.4f}"
+)
 
-    st.subheader("Performance Metrics")
+c2.metric(
+    "Precision",
+    f"{precision:.4f}"
+)
 
-    c1, c2, c3 = st.columns(3)
+c3.metric(
+    "Recall",
+    f"{recall:.4f}"
+)
 
-    c1.metric(
-        "Accuracy",
-        round(accuracy, 4)
-    )
+c4, c5, c6 = st.columns(3)
 
-    c2.metric(
-        "Precision",
-        round(precision, 4)
-    )
+c4.metric(
+    "F1 Score",
+    f"{f1:.4f}"
+)
 
-    c3.metric(
-        "Recall",
-        round(recall, 4)
-    )
+c5.metric(
+    "MCC",
+    f"{mcc:.4f}"
+)
 
-    c4, c5, c6 = st.columns(3)
-
-    c4.metric(
-        "F1 Score",
-        round(f1, 4)
-    )
-
-    c5.metric(
-        "MCC",
-        round(mcc, 4)
-    )
+if auc is not None:
 
     c6.metric(
         "AUC",
-        auc if isinstance(auc, str)
-        else round(auc, 4)
+        f"{auc:.4f}"
     )
 
-    # ==========================================
-    # CONFUSION MATRIX
-    # ==========================================
+else:
 
-    st.subheader("Confusion Matrix")
-
-    cm = confusion_matrix(
-        y_test,
-        y_pred
+    c6.metric(
+        "AUC",
+        "N/A"
     )
 
-    fig, ax = plt.subplots(
-        figsize=(6, 4)
-    )
+# =====================================================
+# CONFUSION MATRIX
+# =====================================================
 
-    sns.heatmap(
-        cm,
-        annot=True,
-        fmt="d",
-        cmap="Blues",
-        ax=ax
-    )
+st.subheader("Confusion Matrix")
 
-    st.pyplot(fig)
+cm = confusion_matrix(
+    y_test,
+    y_pred
+)
 
-    # ==========================================
-    # CLASSIFICATION REPORT
-    # ==========================================
+fig, ax = plt.subplots(
+    figsize=(6, 4)
+)
 
-    st.subheader("Classification Report")
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    ax=ax
+)
 
-    report = classification_report(
-        y_test,
-        y_pred,
-        output_dict=True
-    )
+ax.set_xlabel("Predicted")
+ax.set_ylabel("Actual")
 
-    report_df = pd.DataFrame(
-        report
-    ).transpose()
+st.pyplot(fig)
 
-    st.dataframe(
-        report_df,
-        use_container_width=True
-    )
+# =====================================================
+# CLASSIFICATION REPORT
+# =====================================================
+
+st.subheader("Classification Report")
+
+report = classification_report(
+    y_test,
+    y_pred,
+    output_dict=True
+)
+
+report_df = pd.DataFrame(
+    report
+).transpose()
+
+st.dataframe(
+    report_df,
+    use_container_width=True
+)
+
+# =====================================================
+# FOOTER
+# =====================================================
+
+st.markdown("---")
+st.markdown(
+"""
+Built for Machine Learning Assignment 2
+
+Models Implemented:
+- Logistic Regression
+- Decision Tree
+- KNN
+- Naive Bayes
+- SVM
+"""
+)
